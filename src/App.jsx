@@ -5,6 +5,7 @@ import OrdenesCompra from './components/tabs/OrdenesCompra'
 import BuscarProveedor from './components/tabs/BuscarProveedor'
 import BuscarComprador from './components/tabs/BuscarComprador'
 import LicitacionDetalle from './components/tabs/LicitacionDetalle'
+import Scraper from './components/tabs/Scraper'
 import './index.css'
 
 const TABS = [
@@ -13,6 +14,7 @@ const TABS = [
   { id: 'ordenes', label: 'Órdenes de Compra', icon: '🛒', component: OrdenesCompra },
   { id: 'proveedor', label: 'Buscar Proveedor', icon: '🏢', component: BuscarProveedor },
   { id: 'comprador', label: 'Buscar Comprador', icon: '🏛️', component: BuscarComprador },
+  { id: 'scraper', label: 'Scraper histórico', icon: '💾', component: Scraper },
 ]
 
 export default function App() {
