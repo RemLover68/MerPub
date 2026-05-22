@@ -4,7 +4,7 @@ import { buildDateRange, apiToIso, today } from '../utils/dates'
 
 const BASE = 'https://api.mercadopublico.cl/servicios/v1/publico'
 const PROGRESS_FILE = 'progress.json'
-const DELAY_MS = 600 // ~1.6 req/s, well within 10k/day
+const DELAY_MS = 1500 // ~0.67 req/s, safe para no trigger 429, well within 10k/day
 
 // Estado de cada día en progress.json:
 // { date, status: 'pending'|'success'|'error', queriedAt, count, error, hasUnclosed }
@@ -131,7 +131,7 @@ export function useScraper() {
 
       setProgress({ ...currentProg })
       await writeJson(dh, PROGRESS_FILE, currentProg)
-      await sleep(DELAY_MS)
+      await sleep(DELAY_MS * 2) // extra delay entre días
     }
 
     setStats(s => ({ ...s, current: null }))
