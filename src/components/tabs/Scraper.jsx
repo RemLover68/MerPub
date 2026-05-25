@@ -89,10 +89,11 @@ export default function Scraper({ ticket }) {
           {dirName ? (
             <div className="flex items-center gap-2">
               <span className="text-green-600 text-sm">📁 {dirName}</span>
-              <button onClick={handlePickDir} className="text-xs text-blue-500 hover:underline">Cambiar</button>
+              <button type="button" onClick={handlePickDir} className="text-xs text-blue-500 hover:underline">Cambiar</button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={handlePickDir}
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
@@ -175,6 +176,7 @@ export default function Scraper({ ticket }) {
       <div className="flex gap-2">
         {!running ? (
           <button
+            type="button"
             onClick={handleStart}
             disabled={!ticket || !dirHandle}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors"
@@ -183,6 +185,7 @@ export default function Scraper({ ticket }) {
           </button>
         ) : (
           <button
+            type="button"
             onClick={stop}
             className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors"
           >

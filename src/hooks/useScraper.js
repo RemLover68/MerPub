@@ -59,83 +59,82 @@ export function useScraper() {
     stopRef.current = false
     setRunning(true)
 
-    const prog = await loadProgress(dh)
-    const dates = buildDateRange(yearsBack)
+    try {
+      const prog = await loadProgress(dh)
+      const dates = buildDateRange(yearsBack)
 
-    // In 'recheck' mode: only dates that have unclosed items and were previously scraped
-    const toProcess = mode === 'recheck'
-      ? dates.filter(d => prog[d]?.status === 'success' && prog[d]?.hasUnclosed)
-      : dates.filter(d => prog[d]?.status !== 'success')
+      const toProcess = mode === 'recheck'
+        ? dates.filter(d => prog[d]?.status === 'success' && prog[d]?.hasUnclosed)
+        : dates.filter(d => prog[d]?.status !== 'success')
 
-    setStats(s => ({ ...s, total: toProcess.length, done: 0, errors: 0 }))
+      setStats(s => ({ ...s, total: toProcess.length, done: 0, errors: 0 }))
 
-    let currentProg = { ...prog }
+      let currentProg = { ...prog }
 
-    for (const date of toProcess) {
-      if (stopRef.current) break
+      for (const date of toProcess) {
+        if (stopRef.current) break
 
-      setStats(s => ({ ...s, current: date }))
+        setStats(s => ({ ...s, current: date }))
 
-      try {
-        const { items } = await fetchAllPages(ticket, date)
-        const unclosed = hasUnclosedItems(items)
-        const dataFile = `licitaciones_${date}.json`
+        try {
+          const { items } = await fetchAllPages(ticket, date)
+          const unclosed = hasUnclosedItems(items)
+          const dataFile = `licitaciones_${date}.json`
 
-        if (mode === 'recheck' && currentProg[date]?.status === 'success') {
-          // Compare with existing
-          const existing = await readJson(dh, dataFile)
-          const existingIds = new Set((existing?.items ?? []).map(i => i.CodigoExterno))
-          const changes = items.filter(i => {
-            const old = (existing?.items ?? []).find(o => o.CodigoExterno === i.CodigoExterno)
-            return !old || old.Estado !== i.Estado
+          if (mode === 'recheck' && currentProg[date]?.status === 'success') {
+            const existing = await readJson(dh, dataFile)
+            const changes = items.filter(i => {
+              const old = (existing?.items ?? []).find(o => o.CodigoExterno === i.CodigoExterno)
+              return !old || old.Estado !== i.Estado
+            })
+            if (changes.length > 0) {
+              const changesFile = `changes_${date}_checked_${today()}.json`
+              await writeJson(dh, changesFile, {
+                originalDate: apiToIso(date),
+                checkedAt: new Date().toISOString(),
+                changes: changes.map(c => {
+                  const old = (existing?.items ?? []).find(o => o.CodigoExterno === c.CodigoExterno)
+                  return { code: c.CodigoExterno, name: c.Nombre, oldState: old?.Estado ?? 'nuevo', newState: c.Estado }
+                }),
+              })
+            }
+          }
+
+          await writeJson(dh, dataFile, {
+            date: apiToIso(date),
+            queriedAt: new Date().toISOString(),
+            count: items.length,
+            items,
           })
 
-          if (changes.length > 0) {
-            const changesFile = `changes_${date}_checked_${today()}.json`
-            await writeJson(dh, changesFile, {
-              originalDate: apiToIso(date),
-              checkedAt: new Date().toISOString(),
-              changes: changes.map(c => {
-                const old = (existing?.items ?? []).find(o => o.CodigoExterno === c.CodigoExterno)
-                return { code: c.CodigoExterno, name: c.Nombre, oldState: old?.Estado ?? 'nuevo', newState: c.Estado }
-              }),
-            })
+          currentProg[date] = {
+            date,
+            status: 'success',
+            queriedAt: new Date().toISOString(),
+            count: items.length,
+            hasUnclosed: unclosed,
           }
+          setStats(s => ({ ...s, done: s.done + 1 }))
+        } catch (err) {
+          currentProg[date] = {
+            date,
+            status: 'error',
+            queriedAt: new Date().toISOString(),
+            error: err.message,
+          }
+          setStats(s => ({ ...s, errors: s.errors + 1 }))
         }
 
-        // Save/overwrite daily file
-        await writeJson(dh, dataFile, {
-          date: apiToIso(date),
-          queriedAt: new Date().toISOString(),
-          count: items.length,
-          items,
-        })
-
-        currentProg[date] = {
-          date,
-          status: 'success',
-          queriedAt: new Date().toISOString(),
-          count: items.length,
-          hasUnclosed: unclosed,
-        }
-        setStats(s => ({ ...s, done: s.done + 1 }))
-      } catch (err) {
-        currentProg[date] = {
-          date,
-          status: 'error',
-          queriedAt: new Date().toISOString(),
-          error: err.message,
-        }
-        setStats(s => ({ ...s, errors: s.errors + 1 }))
+        setProgress({ ...currentProg })
+        await writeJson(dh, PROGRESS_FILE, currentProg)
+        await sleep(DELAY_MS * 2)
       }
-
-      setProgress({ ...currentProg })
-      await writeJson(dh, PROGRESS_FILE, currentProg)
-      await sleep(DELAY_MS * 2) // extra delay entre días
+    } catch (err) {
+      console.error('Scraper error:', err)
+    } finally {
+      setStats(s => ({ ...s, current: null }))
+      setRunning(false)
     }
-
-    setStats(s => ({ ...s, current: null }))
-    setRunning(false)
   }, [loadProgress])
 
   const stop = useCallback(() => {
